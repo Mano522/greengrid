@@ -51,7 +51,8 @@ test("Login page supports Citizen, DISCOM, and Policymaker roles and authenticat
   assert.ok(content.includes("discom"), "Login page must support discom role");
   assert.ok(content.includes("policymaker"), "Login page must support policymaker role");
   assert.ok(!content.includes("Continue with Google"), "Continue with Google must be removed");
-  assert.ok(content.includes("handleDemoSignIn"), "Must support quick demo sign-in");
+  assert.ok(!content.includes("handleDemoSignIn"), "Direct demo sign-in buttons must be removed");
+  assert.ok(content.includes("Mandatory Authentication"), "Must enforce mandatory authentication");
   assert.ok(content.includes("getDestination"), "Must support dynamic redirect destination");
 });
 

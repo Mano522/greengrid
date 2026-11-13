@@ -19,7 +19,7 @@ import { LiveWeatherTelemetry } from "./LiveWeatherTelemetry";
 
 export function TopHeader() {
   const { role, setRole } = useRole();
-  const { user, userProfile, isDemoMode, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -95,7 +95,7 @@ export function TopHeader() {
                 {user.displayName || user.email?.split("@")[0]}
               </span>
               <span className="text-[10px] font-medium text-emerald-700 block leading-none capitalize">
-                {userProfile?.role || role} {isDemoMode && "• Demo"}
+                {userProfile?.role || role}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -122,11 +122,6 @@ export function TopHeader() {
                     <Shield className="w-2.5 h-2.5 text-emerald-600" />
                     {role.toUpperCase()}
                   </span>
-                  {isDemoMode && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                      Sandbox
-                    </span>
-                  )}
                 </div>
               </div>
 

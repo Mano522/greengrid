@@ -26,10 +26,22 @@ export interface DemoUser {
   email: string;
   displayName: string;
   photoURL?: string | null;
-  isDemo: true;
+  isDemo?: boolean;
 }
 
 export type AuthUser = (User | DemoUser) & { isDemo?: boolean };
+
+interface StoredAccount {
+  email: string;
+  password: string;
+  user: {
+    uid: string;
+    email: string;
+    displayName: string;
+    photoURL?: string | null;
+  };
+  profile: UserProfileData;
+}
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -37,14 +49,14 @@ interface AuthContextType {
   loading: boolean;
   isDemoMode: boolean;
   isFirebaseConfigured: boolean;
-  loginWithEmail: (email: string, password: string) => Promise<User | void>;
+  loginWithEmail: (email: string, password: string) => Promise<User | AuthUser | void>;
   registerWithEmail: (
     email: string,
     password: string,
     displayName: string,
     role: UserRole,
     organization?: string
-  ) => Promise<User | void>;
+  ) => Promise<User | AuthUser | void>;
   loginWithGoogle: () => Promise<void>;
   loginAsDemo: (role: UserRole, customName?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -53,32 +65,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const REGISTERED_ACCOUNTS_KEY = "igg_registered_accounts";
+const CURRENT_USER_KEY = "igg_current_user";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const { setRole } = useRole();
 
-  // Listen to Firebase Auth state if auth is initialized
+  // Clear demo data on load and initialize current user
   useEffect(() => {
-    // Check if there is an active demo session in localStorage
-    const savedDemo = localStorage.getItem("igg_demo_user");
-    if (savedDemo) {
+    // Purge any legacy demo user session
+    localStorage.removeItem("igg_demo_user");
+
+    // Check if there is an active verified session
+    const savedUserJson = localStorage.getItem(CURRENT_USER_KEY);
+    if (savedUserJson) {
       try {
-        const parsed = JSON.parse(savedDemo);
-        setUser(parsed);
-        setIsDemoMode(true);
-        const profile = localStorage.getItem(`igg_profile_${parsed.uid}`);
-        if (profile) {
-          const parsedProfile = JSON.parse(profile);
-          setUserProfile(parsedProfile);
-          if (parsedProfile.role) setRole(parsedProfile.role);
+        const savedAccount: StoredAccount = JSON.parse(savedUserJson);
+        if (savedAccount && savedAccount.user) {
+          setUser(savedAccount.user as AuthUser);
+          setUserProfile(savedAccount.profile);
+          if (savedAccount.profile?.role) {
+            setRole(savedAccount.profile.role);
+          }
         }
-        setLoading(false);
-        return;
       } catch {
-        localStorage.removeItem("igg_demo_user");
+        localStorage.removeItem(CURRENT_USER_KEY);
       }
     }
 
@@ -90,8 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        setIsDemoMode(false);
-        // Fetch or create profile in Firestore
         const profile = await fetchUserProfileFromFirestore(firebaseUser.uid);
         if (profile) {
           setUserProfile(profile);
@@ -99,13 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setRole(profile.role);
           }
         } else {
-          // If profile doesn't exist yet, create default
           const newProfile = await syncUserProfileToFirestore(firebaseUser, { role: "citizen" });
           if (newProfile) setUserProfile(newProfile);
         }
       } else {
-        // If not in demo mode, clear user
-        if (!localStorage.getItem("igg_demo_user")) {
+        // Only clear if no local registered user session
+        if (!localStorage.getItem(CURRENT_USER_KEY)) {
           setUser(null);
           setUserProfile(null);
         }
@@ -116,33 +127,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [setRole]);
 
-  // Login with Email & Password using Firebase signInWithEmailAndPassword
+  // Mandatory Login with Email & Password
   const loginWithEmail = async (email: string, password: string) => {
-    if (!auth || !isFirebaseConfigured) {
-      // If Firebase is not configured, fall back to simulated credentials check
-      return loginAsDemo("citizen", email.split("@")[0]);
-    }
+    const cleanEmail = email.trim().toLowerCase();
 
-    return signInWithEmailAndPassword(auth, email, password)
-      .then(async (userCredential) => {
-        // Signed in 
-        const user = userCredential.user;
-        const profile = await fetchUserProfileFromFirestore(user.uid);
+    // 1. If Firebase Auth is configured, attempt Firebase login
+    if (auth && isFirebaseConfigured) {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        const fbUser = userCredential.user;
+        const profile = await fetchUserProfileFromFirestore(fbUser.uid);
         if (profile) {
           setUserProfile(profile);
           if (profile.role) setRole(profile.role);
         }
-        return user;
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error("Firebase signInWithEmailAndPassword error:", errorCode, errorMessage);
-        throw error;
-      });
+        setUser(fbUser);
+        return fbUser;
+      } catch (fbError: any) {
+        console.warn("Firebase Auth sign-in failed, checking registered accounts:", fbError.code);
+        // Fall through to registered accounts if Firebase had an error
+      }
+    }
+
+    // 2. Check registered accounts store
+    const registeredJson = localStorage.getItem(REGISTERED_ACCOUNTS_KEY);
+    const registeredAccounts: StoredAccount[] = registeredJson ? JSON.parse(registeredJson) : [];
+    const account = registeredAccounts.find((a) => a.email.toLowerCase() === cleanEmail);
+
+    if (account) {
+      if (account.password !== password) {
+        throw new Error("Invalid password. Please check your credentials.");
+      }
+      setUser(account.user as AuthUser);
+      setUserProfile(account.profile);
+      if (account.profile?.role) {
+        setRole(account.profile.role);
+      }
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(account));
+      return account.user;
+    }
+
+    throw new Error("No account found with this email. Please check your email or create an account.");
   };
 
-  // Register new account with Email & Password using Firebase createUserWithEmailAndPassword
+  // Register new account with Email & Password
   const registerWithEmail = async (
     email: string,
     password: string,
@@ -150,40 +178,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: UserRole,
     organization?: string
   ) => {
-    if (!auth || !isFirebaseConfigured) {
-      // Demo registration
-      return loginAsDemo(role, displayName);
-    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = displayName.trim() || cleanEmail.split("@")[0];
 
-    return createUserWithEmailAndPassword(auth, email, password)
-      .then(async (userCredential) => {
-        // Signed up 
-        const user = userCredential.user;
-        await updateProfile(user, { displayName });
-        
-        // Save to Firestore 'users' collection
+    let createdUid = `user_${Date.now()}`;
+
+    // 1. If Firebase is configured, create in Firebase
+    if (auth && isFirebaseConfigured) {
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+        const fbUser = userCredential.user;
+        createdUid = fbUser.uid;
+        await updateProfile(fbUser, { displayName: cleanName });
         const profile = await syncUserProfileToFirestore(
-          { ...user, displayName },
+          { ...fbUser, displayName: cleanName },
           { role, organization }
         );
         if (profile) {
           setUserProfile(profile);
           setRole(role);
         }
-        return user;
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error("Firebase createUserWithEmailAndPassword error:", errorCode, errorMessage);
-        throw error;
-      });
+        setUser(fbUser);
+      } catch (fbError: any) {
+        console.warn("Firebase createUser error, storing registered user locally:", fbError.code);
+        if (fbError.code === "auth/email-already-in-use") {
+          throw fbError;
+        }
+      }
+    }
+
+    // 2. Store in registered accounts store
+    const registeredJson = localStorage.getItem(REGISTERED_ACCOUNTS_KEY);
+    const registeredAccounts: StoredAccount[] = registeredJson ? JSON.parse(registeredJson) : [];
+
+    const existingIndex = registeredAccounts.findIndex((a) => a.email.toLowerCase() === cleanEmail);
+    if (existingIndex >= 0) {
+      throw new Error("An account with this email already exists. Please sign in.");
+    }
+
+    const newAccount: StoredAccount = {
+      email: cleanEmail,
+      password: password,
+      user: {
+        uid: createdUid,
+        email: cleanEmail,
+        displayName: cleanName,
+        photoURL: null,
+      },
+      profile: {
+        uid: createdUid,
+        email: cleanEmail,
+        displayName: cleanName,
+        role: role,
+        organization: organization || (role === "discom" ? "DISCOM Utility" : role === "policymaker" ? "Energy Authority" : "Residential Consumer"),
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      },
+    };
+
+    registeredAccounts.push(newAccount);
+    localStorage.setItem(REGISTERED_ACCOUNTS_KEY, JSON.stringify(registeredAccounts));
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newAccount));
+
+    setUser(newAccount.user as AuthUser);
+    setUserProfile(newAccount.profile);
+    setRole(role);
+
+    return newAccount.user;
   };
 
   // Login with Google
   const loginWithGoogle = async () => {
     if (!auth || !googleProvider || !isFirebaseConfigured) {
-      return loginAsDemo("policymaker", "Google Energy Officer");
+      throw new Error("Google sign-in is not configured. Please use email and password.");
     }
     const cred = await signInWithPopup(auth, googleProvider);
     const profile = await syncUserProfileToFirestore(cred.user, { role: "citizen" });
@@ -191,48 +258,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(profile);
       if (profile.role) setRole(profile.role);
     }
+    setUser(cred.user);
   };
 
-  // Instant Demo login (Citizen / DISCOM / Policymaker)
-  const loginAsDemo = async (role: UserRole, customName?: string) => {
-    const roleLabels: Record<UserRole, string> = {
-      citizen: "Dr. Ananya Sharma (Citizen & Homeowner)",
-      discom: "Rajesh Verma (Tata Power Delhi / DISCOM)",
-      policymaker: "Kavita Rao (Ministry of Power / Analyst)",
-    };
-
-    const demoUid = `demo_${role}_${Date.now()}`;
-    const name = customName || roleLabels[role] || "Energy Delegate";
-    const demoUserObj: DemoUser = {
-      uid: demoUid,
-      email: `${role}.demo@indiagreengrid.org`,
-      displayName: name,
-      photoURL: null,
-      isDemo: true,
-    };
-
-    const demoProfile: UserProfileData = {
-      uid: demoUid,
-      email: demoUserObj.email,
-      displayName: name,
-      role: role,
-      organization: role === "discom" ? "TPDDL" : role === "policymaker" ? "CEA / MNRE" : "Delhi Resident",
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString(),
-    };
-
-    localStorage.setItem("igg_demo_user", JSON.stringify(demoUserObj));
-    localStorage.setItem(`igg_profile_${demoUid}`, JSON.stringify(demoProfile));
-
-    setUser(demoUserObj);
-    setUserProfile(demoProfile);
-    setIsDemoMode(true);
-    setRole(role);
+  // Direct demo login is strictly disabled
+  const loginAsDemo = async (_role: UserRole, _customName?: string) => {
+    throw new Error("Direct demo login has been disabled. Mandatory authentication is required.");
   };
 
   // Logout
   const logout = async () => {
     localStorage.removeItem("igg_demo_user");
+    localStorage.removeItem(CURRENT_USER_KEY);
     if (auth) {
       try {
         await signOut(auth);
@@ -242,17 +279,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setUserProfile(null);
-    setIsDemoMode(false);
   };
 
   // Reset password
   const resetPassword = async (email: string) => {
-    if (!auth || !isFirebaseConfigured) {
-      // Simulate delay for demo
-      await new Promise((res) => setTimeout(res, 800));
+    const cleanEmail = email.trim().toLowerCase();
+    if (auth && isFirebaseConfigured) {
+      await sendPasswordResetEmail(auth, cleanEmail);
       return;
     }
-    await sendPasswordResetEmail(auth, email);
+    // Simulate reset check for registered account
+    const registeredJson = localStorage.getItem(REGISTERED_ACCOUNTS_KEY);
+    const registeredAccounts: StoredAccount[] = registeredJson ? JSON.parse(registeredJson) : [];
+    const account = registeredAccounts.find((a) => a.email.toLowerCase() === cleanEmail);
+    if (!account) {
+      throw new Error("No account found with this email address.");
+    }
   };
 
   return (
@@ -261,7 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         userProfile,
         loading,
-        isDemoMode,
+        isDemoMode: false,
         isFirebaseConfigured,
         loginWithEmail,
         registerWithEmail,

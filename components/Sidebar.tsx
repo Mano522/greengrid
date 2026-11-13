@@ -22,7 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, userProfile, isDemoMode, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
 
   const navLinks = [
     { label: "Dashboard", href: "/", icon: Home },
