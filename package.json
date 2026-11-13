@@ -11,10 +11,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-<<<<<<< HEAD
     "firebase": "^10.14.1",
-=======
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
     "lucide-react": "^0.468.0",
     "next": "^14.2.18",
     "react": "^18.3.1",

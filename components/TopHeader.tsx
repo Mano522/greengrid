@@ -1,6 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRole, UserRole } from "./RoleContext";
@@ -16,17 +15,10 @@ import {
   Shield,
   Building,
 } from "lucide-react";
-=======
-import React, { useState } from "react";
-import { useRole, UserRole } from "./RoleContext";
-import { User, Bell, ChevronDown, ShieldCheck, Sparkles, X } from "lucide-react";
-import { DATA_CITATIONS } from "@/data/energyData";
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
 import { LiveWeatherTelemetry } from "./LiveWeatherTelemetry";
 
 export function TopHeader() {
   const { role, setRole } = useRole();
-<<<<<<< HEAD
   const { user, userProfile, isDemoMode, logout } = useAuth();
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -59,16 +51,6 @@ export function TopHeader() {
       <LiveWeatherTelemetry />
 
       {/* Role Switcher matching Reference Image */}
-=======
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-
-  return (
-    <div className="w-full flex items-center justify-end gap-3 py-3 px-6 border-b border-slate-200/80 bg-white/70 backdrop-blur-md sticky top-0 z-30">
-      {/* Live Weather-API Renewable Output, Battery Sizing & CPCB Air Quality Telemetry */}
-      <LiveWeatherTelemetry />
-
-      {/* Role Switcher matching Reference Image 1 */}
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
       <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
         <span>Role:</span>
         <div className="relative">
@@ -98,7 +80,6 @@ export function TopHeader() {
         <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
       </button>
 
-<<<<<<< HEAD
       {/* User Authentication Pill / Menu */}
       {user ? (
         <div className="relative" ref={dropdownRef}>
@@ -198,8 +179,6 @@ export function TopHeader() {
         </Link>
       )}
 
-=======
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
       {/* Notification / Citations Drawer Modal */}
       {showNotificationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">

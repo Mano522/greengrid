@@ -13,23 +13,16 @@ import {
   Menu,
   X,
   Leaf,
-<<<<<<< HEAD
   LogIn,
   UserCheck,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-=======
-} from "lucide-react";
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-<<<<<<< HEAD
   const { user, userProfile, isDemoMode, logout } = useAuth();
-=======
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
 
   const navLinks = [
     { label: "Dashboard", href: "/", icon: Home },
@@ -38,14 +31,11 @@ export default function Sidebar() {
     { label: "Green Jobs", href: "/jobs", icon: Briefcase },
     { label: "Green Finance", href: "/green-finance", icon: Coins },
     { label: "Policy & Insights", href: "/audits", icon: FileText },
-<<<<<<< HEAD
     {
       label: user ? "Account" : "Sign In",
       href: "/login",
       icon: user ? UserCheck : LogIn,
     },
-=======
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
   ];
 
   const content = (
@@ -57,11 +47,7 @@ export default function Sidebar() {
           onClick={() => setMobileOpen(false)}
           className="flex items-center gap-3 px-2 mb-8 group"
         >
-<<<<<<< HEAD
           <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-=======
-          <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
             <Leaf className="w-5 h-5 fill-emerald-400 text-emerald-400" />
           </div>
           <div>
@@ -80,11 +66,7 @@ export default function Sidebar() {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
-<<<<<<< HEAD
                 : pathname === item.href || pathname.startsWith(`${item.href}/`);
-=======
-                : pathname.startsWith(item.href);
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
             const Icon = item.icon;
 
             return (
@@ -106,7 +88,6 @@ export default function Sidebar() {
         </nav>
       </div>
 
-<<<<<<< HEAD
       {/* Account Info or Sign In Quick Action */}
       <div className="space-y-4">
         {user ? (
@@ -188,47 +169,6 @@ export default function Sidebar() {
             <line x1="82" y1="110" x2="117" y2="98" stroke="currentColor" strokeWidth="1" />
           </svg>
         </div>
-=======
-      {/* Wind Turbine & Solar Watermark Illustration at bottom matching Reference Image 1 */}
-      <div className="relative pt-6 overflow-hidden select-none pointer-events-none opacity-40">
-        <svg
-          viewBox="0 0 200 120"
-          className="w-full h-auto text-emerald-400"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        >
-          {/* Rolling hill */}
-          <path
-            d="M -10 110 Q 50 85, 110 100 T 210 95 L 210 120 L -10 120 Z"
-            fill="rgba(16, 185, 129, 0.15)"
-            stroke="none"
-          />
-          {/* Wind Turbine 1 */}
-          <line x1="45" y1="95" x2="45" y2="35" stroke="currentColor" strokeWidth="2" />
-          <circle cx="45" cy="35" r="2.5" fill="currentColor" />
-          <line x1="45" y1="35" x2="30" y2="15" stroke="currentColor" strokeWidth="1.5" />
-          <line x1="45" y1="35" x2="60" y2="20" stroke="currentColor" strokeWidth="1.5" />
-          <line x1="45" y1="35" x2="45" y2="55" stroke="currentColor" strokeWidth="1.5" />
-
-          {/* Wind Turbine 2 (Smaller) */}
-          <line x1="20" y1="102" x2="20" y2="55" stroke="currentColor" strokeWidth="1.5" />
-          <circle cx="20" cy="55" r="2" fill="currentColor" />
-          <line x1="20" y1="55" x2="10" y2="40" stroke="currentColor" strokeWidth="1" />
-          <line x1="20" y1="55" x2="30" y2="42" stroke="currentColor" strokeWidth="1" />
-          <line x1="20" y1="55" x2="20" y2="70" stroke="currentColor" strokeWidth="1" />
-
-          {/* Solar Panel array */}
-          <polygon
-            points="70,105 105,95 130,102 95,115"
-            fill="rgba(16, 185, 129, 0.2)"
-            stroke="currentColor"
-            strokeWidth="1.2"
-          />
-          <line x1="88" y1="100" x2="112" y2="108" stroke="currentColor" strokeWidth="1" />
-          <line x1="82" y1="110" x2="117" y2="98" stroke="currentColor" strokeWidth="1" />
-        </svg>
->>>>>>> f2fc9dacd9c6cf7772eb6c8aa4967711788f9ddf
       </div>
     </div>
   );
