@@ -1,4 +1,4 @@
-# 🌱 India Green Grid
+# 🌱 India Green-Grid
 
 **A unified, role-based decision-support platform for India's renewable energy transition**
 
